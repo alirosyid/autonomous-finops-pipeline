@@ -6,6 +6,14 @@ This architecture solves the three critical failures of traditional RPA and basi
 
 ---
 
+## 🔴 LIVE DEMONSTRATION: FinOps Engine in Action
+
+*Proof of Life: The system successfully ingests an invoice, validates the deterministic math, and instantaneously blocks the identical subsequent double-spend payload using a stateful SSOT radar to protect enterprise budgets.*
+
+<video src="./0803(1).mp4" controls="controls" width="100%"></video>
+
+---
+
 ## 🛡️ Core Engineering Capabilities
 
 1. **Zero-Trust PII Masking:** Financial documents are sanitized locally via strict regex before ever touching external LLM APIs (Groq/OpenAI), ensuring absolute GDPR/Enterprise compliance.
