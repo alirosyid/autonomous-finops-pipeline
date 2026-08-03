@@ -7,10 +7,10 @@ This architecture solves the three critical failures of traditional RPA and basi
 ---
 
 ## 🔴 LIVE DEMONSTRATION: FinOps Engine in Action
-[
+
 *Proof of Life: The system successfully ingests an invoice, validates the deterministic math, and instantaneously blocks the identical subsequent double-spend payload using a stateful SSOT radar to protect enterprise budgets.*
 
-<video src="./0803(1).mp4" controls="controls" width="100%"></video>](https://github.com/alirosyid/autonomous-finops-pipeline/raw/main/0803(1).mp4)
+https://github.com/alirosyid/autonomous-finops-pipeline/raw/main/0803(1).mp4
 
 ---
 
