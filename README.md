@@ -10,7 +10,7 @@ This architecture solves the three critical failures of traditional RPA and basi
 
 *Proof of Life: The system successfully ingests an invoice, validates the deterministic math, and instantaneously blocks the identical subsequent double-spend payload using a stateful SSOT radar to protect enterprise budgets.*
 
-[![FinOps Engine Demo](https://img.youtube.com/vi/vuEeE0JmrWk/maxresdefault.jpg)](https://www.youtube.com/watch?v=vuEeE0JmrWk)
+[![FinOps Engine Demo](https://img.youtube.com/vi/vuEeE0JmrWk/maxresdefault.jpg)](https://www.youtube.com/watch?v=vuEeE0JmrWk) 
 ---
 
 ## 🛡️ Core Engineering Capabilities
