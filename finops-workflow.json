@@ -1,0 +1,442 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 📥 INGESTION ZONE\nReceives physical invoice documents (PDF) via Webhook and extracts the raw binary text.",
+        "height": 280,
+        "width": 380,
+        "color": 6
+      },
+      "id": "89dab864-e565-481a-b93d-e63c50551563",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1264,
+        48
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## 🛡️ SECURITY & INTELLIGENCE\nMasks sensitive PII locally before routing to the Groq API (Llama-3) for zero-trust JSON extraction.",
+        "height": 280,
+        "width": 400,
+        "color": 3
+      },
+      "id": "66fe532d-f4f6-4391-89cf-f4574bf999d9",
+      "name": "Sticky Note 2",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -832,
+        48
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## ⚙️ VALIDATION ENGINE\nExecutes deterministic Python/JS math to destroy LLM hallucinations. Routes based on strict validity.",
+        "height": 280,
+        "width": 420,
+        "color": 2
+      },
+      "id": "c9a0e3ed-2a50-41c7-a28c-fb6ccef6d5af",
+      "name": "Sticky Note 3",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -384,
+        48
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "content": "## 🚀 EXECUTION END-POINTS\n**TRUE (Top):** Google Sheets Radar prevents double-spend, then pushes to ERP/DB.\n**FALSE (Bottom):** Halts pipeline and requests Executive HITL Override via Telegram.",
+        "height": 528,
+        "width": 732,
+        "color": 4
+      },
+      "id": "32a98de0-0f33-4313-a907-a0f80b3b4dfd",
+      "name": "Sticky Note 4",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        64,
+        -96
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "finops-inbound",
+        "options": {
+          "binaryData": true
+        }
+      },
+      "name": "Inbound Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -1232,
+        176
+      ],
+      "id": "64474002-7879-411a-bdbe-e2dcaab81ab6",
+      "webhookId": "d8c978e7-8948-4308-afaa-b482232e2b87"
+    },
+    {
+      "parameters": {},
+      "name": "Extract PDF",
+      "type": "n8n-nodes-base.readPDF",
+      "typeVersion": 1,
+      "position": [
+        -1040,
+        176
+      ],
+      "id": "10f13885-9731-4cf6-8faf-a08b566e640a"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Fetch raw text from the PDF extraction node\nlet rawText = $input.item.json.text || \"\";\n\n// Aggressive Regex to redact 10-16 digit numbers (Bank Accounts, SSN, Tax IDs)\nlet safeText = rawText.replace(/\\b\\d{10,16}\\b/g, \"[REDACTED_SECURE_DATA]\");\n\nreturn { safe_payload: safeText };"
+      },
+      "name": "Zero-Trust Redaction",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -784,
+        176
+      ],
+      "id": "48d464b5-e960-4b17-ba69-37da815cfdeb"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer gsk_xxxxxxxxxxxxxxxxxxx"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n  {\n    \"model\": \"llama-3.1-8b-instant\",\n    \"messages\": [\n      {\n        \"role\": \"system\",\n        \"content\": \"You are an Enterprise Data Extraction AI. Extract billing data from the following text. Return ONLY a valid JSON object with NO markdown formatting, NO chat, and NO preamble. Structure required: { \\\"vendor_name\\\": string, \\\"invoice_id\\\": string, \\\"tax_rate\\\": number, \\\"claimed_total\\\": number, \\\"items\\\": [ { \\\"item_name\\\": string, \\\"price\\\": number, \\\"qty\\\": number } ] }\"\n      },\n      {\n        \"role\": \"user\",\n        \"content\": $json.safe_payload\n      }\n    ],\n    \"temperature\": 0,\n    \"response_format\": { \"type\": \"json_object\" }\n  }\n}}",
+        "options": {}
+      },
+      "name": "Groq API (Llama-3)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        -608,
+        176
+      ],
+      "id": "e67f3aa6-2d06-4569-9528-4f5ee4207f1f"
+    },
+    {
+      "parameters": {
+        "jsCode": "// DETERMINISTIC MATH VALIDATOR\n// Executes strict logic to destroy LLM hallucinations.\n\nlet groqResponse = $input.item.json.choices[0].message.content;\nlet invoiceData = JSON.parse(groqResponse);\n\nlet items = invoiceData.items || [];\nlet taxRate = parseFloat(invoiceData.tax_rate) || 0;\nlet claimedTotal = parseFloat(invoiceData.claimed_total) || 0;\n\nlet calculatedSubtotal = 0;\nfor (let item of items) {\n  let price = parseFloat(item.price) || 0;\n  let qty = parseFloat(item.qty) || 1;\n  calculatedSubtotal += (price * qty);\n}\n\nlet calculatedTax = calculatedSubtotal * taxRate;\nlet trueTotal = calculatedSubtotal + calculatedTax;\n\n// Tolerance for decimal rounding: 0.01\nif (Math.abs(trueTotal - claimedTotal) <= 0.01) {\n  return { \n    status: \"APPROVED\", \n    vendor: invoiceData.vendor_name, \n    invoice_id: invoiceData.invoice_id || \"INV-UNKNOWN\", \n    claimed_total: claimedTotal, \n    true_total: trueTotal \n  };\n} else {\n  return { \n    status: \"REJECTED\", \n    vendor: invoiceData.vendor_name, \n    message: `FRAUD / HALLUCINATION DETECTED: Vendor claimed ${claimedTotal}, True deterministic calculation is ${trueTotal}.` \n  };\n}"
+      },
+      "name": "Deterministic Math Validator",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        176
+      ],
+      "id": "ac4f744d-bfd5-421d-89df-aa750a7198b2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.status }}",
+              "value2": "APPROVED"
+            }
+          ]
+        }
+      },
+      "name": "IF Routing",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        176
+      ],
+      "id": "0edf73f5-cd42-4276-a3fa-fa0843415944"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "https://docs.google.com/spreadsheets/d/1pFdneQ85dKf9vN5iKYRQA9f8rCsmltF_vYJPGINvRKA/edit?gid=0#gid=0"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pFdneQ85dKf9vN5iKYRQA9f8rCsmltF_vYJPGINvRKA/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Invoice ID",
+              "lookupValue": "={{ $json.invoice_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Search Sheets (Radar)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        112,
+        64
+      ],
+      "id": "3845f209-4b12-492c-84bb-bb29b5603bd4",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleApi": {
+          "id": "pnJpfBLErXtN6gsf",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json[\"Invoice ID\"] }}",
+              "operation": "isEmpty"
+            }
+          ]
+        }
+      },
+      "name": "Check Duplicate (IF)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        352,
+        64
+      ],
+      "id": "c61fd226-b7ca-4cfb-ba76-8ef016051d6a"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "https://docs.google.com/spreadsheets/d/1pFdneQ85dKf9vN5iKYRQA9f8rCsmltF_vYJPGINvRKA/edit?gid=0#gid=0"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pFdneQ85dKf9vN5iKYRQA9f8rCsmltF_vYJPGINvRKA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Vendor": "={{ $('IF Routing').item.json.vendor }}",
+            "Invoice ID": "={{ $('IF Routing').item.json.invoice_id }}",
+            "Status": "={{ $('IF Routing').item.json.status }}",
+            "Total Bills": "={{ $('IF Routing').item.json.true_total }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Vendor",
+              "displayName": "Vendor",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Invoice ID",
+              "displayName": "Invoice ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Total Bills",
+              "displayName": "Total Bills",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "ERP Database (Sheets)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        592,
+        64
+      ],
+      "id": "1708aab5-e49f-4550-9d0c-fafc608be3ec",
+      "credentials": {
+        "googleApi": {
+          "id": "pnJpfBLErXtN6gsf",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "5263634395",
+        "text": "=🚨 FINANCIAL ANOMALY DETECTED! 🚨\n\nReason: {{ $json.message }}\nVendor: {{ $json.vendor }}",
+        "additionalFields": {}
+      },
+      "name": "HITL Telegram Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        112,
+        272
+      ],
+      "id": "07267390-7a1b-4965-96a4-76f77164ee41",
+      "webhookId": "a77630e0-4eec-466a-a2b7-6c4ded2f31ca",
+      "credentials": {
+        "telegramApi": {
+          "id": "8jImDCycWGLXaL18",
+          "name": "Telegram account 3"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Inbound Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF": {
+      "main": [
+        [
+          {
+            "node": "Zero-Trust Redaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zero-Trust Redaction": {
+      "main": [
+        [
+          {
+            "node": "Groq API (Llama-3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq API (Llama-3)": {
+      "main": [
+        [
+          {
+            "node": "Deterministic Math Validator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deterministic Math Validator": {
+      "main": [
+        [
+          {
+            "node": "IF Routing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Routing": {
+      "main": [
+        [
+          {
+            "node": "Search Sheets (Radar)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HITL Telegram Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Sheets (Radar)": {
+      "main": [
+        [
+          {
+            "node": "Check Duplicate (IF)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Duplicate (IF)": {
+      "main": [
+        [
+          {
+            "node": "ERP Database (Sheets)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e269d00c511838a2ab2c31ca0b863a500bc0613f5fd61db1e08abb6d3fc9c67b"
+  }
+}
